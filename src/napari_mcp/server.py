@@ -91,8 +91,8 @@ def register_plugin_tools(server: FastMCP, state: ServerState) -> list[str]:
     A package contributes tools by declaring an entry point in the
     ``napari_mcp.tools`` group that points at a callable
     ``register(server, state) -> None``. The callable registers tools with
-    ``@server.tool()`` and may use ``state.viewer`` and ``state.gui_executor``
-    (to run GUI work on the Qt main thread) exactly as built-in tools do::
+    ``@server.tool()`` and may use ``state.viewer`` and ``state.gui_execute``
+    (runs GUI work on the Qt main thread in the plugin) as built-in tools do::
 
         [project.entry-points."napari_mcp.tools"]
         my_plugin = "my_plugin.mcp:register"

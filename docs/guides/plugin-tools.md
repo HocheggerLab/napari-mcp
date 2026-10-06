@@ -18,15 +18,16 @@ my_plugin = "my_plugin.mcp:register"
 
 `register(server, state)` receives the `FastMCP` server and napari-mcp's
 `ServerState`. Register tools with `@server.tool()`. Run anything that touches
-the GUI through `state.gui_executor`, which executes it on the Qt main thread,
-as the built-in tools do:
+the GUI through `state.gui_execute(...)`. In the napari plugin it runs the
+operation on the Qt main thread; standalone, it calls it directly. This is
+what the built-in tools do:
 
 ```python
 def register(server, state):
     @server.tool()
     async def count_layers() -> int:
         """Number of layers in the current viewer."""
-        return state.gui_executor(lambda: len(state.viewer.layers))
+        return state.gui_execute(lambda: len(state.viewer.layers))
 ```
 
 Tools are registered once, after napari-mcp's built-in tools. Choose names
