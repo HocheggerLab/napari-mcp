@@ -81,9 +81,48 @@ def get_state() -> ServerState:
 # ---------------------------------------------------------------------------
 
 
+#: Entry-point group through which other packages contribute MCP tools.
+TOOL_ENTRY_POINT_GROUP = "napari_mcp.tools"
+
+
+def register_plugin_tools(server: FastMCP, state: ServerState) -> list[str]:
+    """Let installed packages add their own tools to *server*.
+
+    A package contributes tools by declaring an entry point in the
+    ``napari_mcp.tools`` group that points at a callable
+    ``register(server, state) -> None``. The callable registers tools with
+    ``@server.tool()`` and may use ``state.viewer`` and ``state.gui_executor``
+    (to run GUI work on the Qt main thread) exactly as built-in tools do::
+
+        [project.entry-points."napari_mcp.tools"]
+        my_plugin = "my_plugin.mcp:register"
+
+    A contribution that fails to import or register is logged and skipped,
+    so a broken plugin cannot stop the server.
+
+    Returns
+    -------
+    list of str
+        Names of the entry points that registered successfully.
+    """
+    from importlib.metadata import entry_points
+
+    loaded = []
+    for ep in entry_points(group=TOOL_ENTRY_POINT_GROUP):
+        try:
+            ep.load()(server, state)
+        except Exception:
+            logger.exception("napari-mcp: tool plugin %r failed to register", ep.name)
+        else:
+            loaded.append(ep.name)
+            logger.info("napari-mcp: registered tools from plugin %r", ep.name)
+    return loaded
+
+
 def create_server(
     state: ServerState | None = None,
     exclude_tools: Iterable[str] = (),
+    load_plugins: bool = True,
 ) -> FastMCP:
     """Create a FastMCP server with all tools bound to *state*.
 
@@ -96,6 +135,10 @@ def create_server(
         version of a tool (e.g. the bridge server) exclude it here and
         register theirs, so every tool is registered exactly once through
         FastMCP's public API.
+    load_plugins : bool, optional
+        Register tools contributed by installed packages through the
+        ``napari_mcp.tools`` entry-point group (see
+        :func:`register_plugin_tools`). Default True.
 
     Returns
     -------
@@ -1916,6 +1959,9 @@ def create_server(
 
     # Store server instance for test access via ``napari_mcp.server.server``
     _mod.server = server
+
+    if load_plugins:
+        register_plugin_tools(server, state)
 
     return server
 
